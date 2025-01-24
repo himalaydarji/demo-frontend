@@ -1,50 +1,92 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useClientRouter } from "../hooks/useClientRouter";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "../Components/Input";
 import TextAreaInput from "../Components/TextAreaInput";
-import { createTaskAPI } from "../API";
+import { createTaskAPI, getTaskByIdAPI, updateTaskAPI } from "../API";
+import { useSearchParams } from "next/navigation";
 const page = () => {
+  let ignore = false;
   const [loading, setLoading] = useState(false);
   const router = useClientRouter();
-  const { values, errors, touched, handleChange, handleSubmit } = useFormik({
-    initialValues: {
-      task_name: "",
-      task_description: "",
-    },
-    validationSchema: yup.object().shape({
-      task_name: yup.string().required("Task name is required"),
-      task_description: yup.string(),
-    }),
-    onSubmit: () => {
-      createTask();
-    },
-  });
-  const createTask = async () => {
-    setLoading(true);
-    await fetch(createTaskAPI, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+  const searchParams = useSearchParams();
+  const taskId = searchParams.get("id");
+  const { values, errors, touched, setValues, handleChange, handleSubmit } =
+    useFormik({
+      initialValues: {
+        task_name: "",
+        task_description: "",
       },
-      body: JSON.stringify(values),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success") {
-          router.push("/");
-        } else {
-          alert(data.message);
-        }
-        setLoading(false);
-      });
+      validationSchema: yup.object().shape({
+        task_name: yup.string().required("Task name is required"),
+        task_description: yup.string(),
+      }),
+      onSubmit: () => {
+        updateTask();
+      },
+    });
+  const updateTask = async () => {
+    if (taskId) {
+      setLoading(true);
+      await fetch(updateTaskAPI, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...values, id: parseInt(taskId) }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") {
+            router.push("/");
+          } else {
+            alert(data.message);
+          }
+          setLoading(false);
+        });
+    }
   };
+  const getTaskById = async () => {
+    if (taskId) {
+      setLoading(true);
+      await fetch(getTaskByIdAPI, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: parseInt(taskId) }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") {
+            setValues({
+              ...values,
+              task_description: data.data.task_description,
+              task_name: data.data.task_name,
+            });
+          } else {
+            alert(data.message);
+          }
+          setLoading(false);
+        });
+    }
+  };
+  useEffect(() => {
+    if (!ignore) {
+      taskId ? getTaskById() : router.push("/");
+    }
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   return (
     <div className="mx-auto container max-md:px-5 py-5 space-y-10">
       <div className="flex justify-between items-center">
-        <div className="text-xl font-semibold">Create Task</div>
+        <div className="text-xl font-semibold">Update Task</div>
         <button
           onClick={() => {
             router.back();
@@ -88,7 +130,7 @@ const page = () => {
             type="submit"
             className="w-full bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold"
           >
-            Submit
+            Edit
           </button>
           <button
             type="button"
