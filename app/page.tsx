@@ -2,7 +2,7 @@
 import { IconEdit, IconTrash } from "@tabler/icons-react";
 import React, { useEffect, useState } from "react";
 import { useClientRouter } from "./hooks/useClientRouter";
-import { getTaskAPI, updateTaskAPI } from "./API";
+import { deleteTaskAPI, getTaskAPI, updateTaskAPI } from "./API";
 interface taskType {
   id: number;
   task_name: string;
@@ -56,10 +56,33 @@ const Home = () => {
         setLoading(false);
       });
   };
+  const handleDeleteTask = async (id: number) => {
+    await fetch(deleteTaskAPI, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") {
+          getAllTasks();
+        } else {
+          alert(data.message);
+        }
+        setLoading(false);
+      });
+  };
   return (
     <div className="mx-auto container max-md:px-5 py-5 space-y-10">
       <div className="flex justify-between items-center">
-        <div className="text-xl font-semibold">Task Page</div>
+        <div className="text-xl font-semibold">
+          Task Page{" "}
+          <span className="text-gray-500">
+            ({tasks.filter((i) => i.is_completed).length}/{tasks.length})
+          </span>
+        </div>
         <button
           onClick={() => {
             router.push("/create-task");
@@ -114,7 +137,12 @@ const Home = () => {
                     >
                       <IconEdit className="h-5 w-5 text-blue-500" />
                     </button>
-                    <button className="mr-4">
+                    <button
+                      onClick={() => {
+                        handleDeleteTask(task.id);
+                      }}
+                      className="mr-4"
+                    >
                       <IconTrash className="h-5 w-5 text-red-500" />
                     </button>
                   </td>
